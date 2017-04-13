@@ -50,7 +50,7 @@ featureData<-featureData[,filteredCol]
 # Put descriptive variable names
 cleanVars<-tolower(gsub("[\\(\\),\\-]","",featureLabels$featurelabels[filteredCol]))
 cleanVars<-tolower(gsub("^t","time",cleanVars))
-cleanVars<-tolower(gsub("^f","fourier",cleanVars))
+cleanVars<-tolower(gsub("^f","frequency",cleanVars))
 names(featureData)<-cleanVars
 
 # Load Activity data
