@@ -1,0 +1,125 @@
+---
+title: "FINAL PROJECT: PRACTICAL MACHINE LEARNING"
+output: html_document
+---
+
+```{r addlibs,cache=TRUE,echo=FALSE}
+library(knitr)
+library(UsingR)
+opts_chunk$set(echo=TRUE)
+```
+
+## 1.0 EXECUTIVE SUMMARY
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+## 2.0 GETTING AND CLEANING DATA
+
+### 2.1 GETTING THE DATA
+
+```{r analysis1,cache=TRUE}
+setwd("C:/Soumik/Datasets/machinelearning")
+training<-read.csv("pml-training.csv")
+testing<-read.csv("pml-testing.csv")
+dim(training)
+dim(testing)
+```
+
+The data is partitioned into training, validation and test sets as below -
+
+```{r analysis2,cache=TRUE}
+library(caret)
+inTrain<-createDataPartition(training$classe,p=0.7,list=FALSE)
+trainset<-training[inTrain,]
+testset<-training[-inTrain,]
+dim(trainset)
+dim(testset)
+```
+
+### 2.2 CLEANING THE DATA
+
+All the 3 datasets are cleaned based on the following -
+
+* All predictors with near zero variance are removed
+* All predictors with high percentage of NAs are removed
+
+```{r analysis3,cache=TRUE}
+nzv_trg<-nearZeroVar(trainset)
+trainset<-trainset[,-nzv_trg]
+testset<-testset[,-nzv_trg]
+AllNA<-sapply(trainset,function(x) mean(is.na(x)))>0.95
+trainset<-trainset[,AllNA==FALSE]
+testset<-testset[,AllNA==FALSE]
+
+dim(trainset)
+dim(testset)
+
+trainset<-trainset[,-c(1:5)]
+testset<-testset[,-c(1:5)]
+
+dim(trainset)
+dim(testset)
+
+dim(testing)
+testing<-testing[,-nzv_trg]
+testing<-testing[,AllNA==FALSE]
+testing<-testing[,-c(1:5)]
+dim(testing)
+```
+
+## 3.0 APPLYING PREDICTION MOEDLLING
+
+### 3.1 PREDICTION WITH RANDOM FORREST
+
+We first predict using Random Forrest -
+
+```{r analysis4,cache=TRUE}
+set.seed(12345)
+library(randomForest)
+controlRF<-trainControl(method = "cv",number = 3,verboseIter = FALSE)
+modfit_RF<-train(classe~.,data=trainset,method="rf",trControl=controlRF)
+modfit_RF$finalModel
+predict_RF<-predict(modfit_RF,newdata = testset)
+confM<-confusionMatrix(predict_RF,testset$classe)
+plot(confM$table,col=confM$byClass,main=paste("Random Forest - Accuracy=",round(confM$overall["Accuracy"],4)))
+```
+
+The accuracy of Random Forrest model is =**0.9978**
+
+### 3.2 PREDICTION WITH DECISION TREE
+
+```{r analysis5,cache=TRUE}
+set.seed(12345)
+library(rpart)
+modfit_tree<-rpart(classe~.,data=trainset,method="class")
+predict_tree<-predict(modfit_tree,newdata=testset,type="class")
+confM_tree<-confusionMatrix(predict_tree,testset$classe)
+confM_tree
+plot(confM_tree$table,col=confM_tree$byClass,main=paste("Decison Tree - Accuracy=",round(confM_tree$overall["Accuracy"],4)))
+```
+
+The accuracy of Decision Tree model is =**0.7404**
+
+### 3.3 PREDICTION WITH BOSSTING
+
+```{r analysis6,cache=TRUE}
+set.seed(12345)
+controlGBM<-trainControl(method="repeatedcv",number = 5,repeats = 1)
+modfit_gbm<-train(classe~.,data=trainset,method="gbm",trControl=controlGBM,verbose=FALSE)
+predict_gbm<-predict(modfit_gbm,newdata = testset)
+confM_gbm<-confusionMatrix(predict_gbm,testset$classe)
+confM_gbm
+plot(confM_gbm$table,col=confM_gbm$byClass,main=paste("Decison Tree - Accuracy=",round(confM_gbm$overall["Accuracy"],4)))
+```
+
+The accuracy of Boosting is =**0.9857**
+
+## 4.0 CONCLUSION
+
+It is observed that out of these three models, Random Forrest provides more accuracy and hence the Random Forrest model will be used for prediction using the test data set.
+
+### 4.1 PREDICTION OF TEST DATA USING RANDOM FORREST
+
+```{r analysis7,cache=TRUE}
+predict(modfit_RF,newdata = testing)
+```
